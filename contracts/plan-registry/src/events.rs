@@ -1,6 +1,6 @@
 //! Events emitted by the plan registry contract.
 
-use soroban_sdk::{contractevent, Address, String};
+use soroban_sdk::{contractevent, Address, String, Symbol};
 
 /// Emitted when a merchant publishes a new plan.
 #[contractevent]
@@ -24,6 +24,8 @@ pub struct PlanCreated {
     pub description: String,
     /// Keeper tip frozen into the plan, in basis points of the merchant share.
     pub keeper_bps: u32,
+    /// Discovery category the merchant chose, empty when it chose none.
+    pub category: Symbol,
 }
 
 /// Emitted when a merchant activates or deactivates a plan.

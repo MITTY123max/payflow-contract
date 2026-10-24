@@ -27,7 +27,7 @@ pub use events::{PlanCreated, PlanRenamed, PlanStatusChanged, PlanSuccessorSet, 
 pub use types::{DataKey, Plan, Profile};
 
 use payflow_shared::MAX_KEEPER_BPS;
-use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
+use soroban_sdk::{contract, contractimpl, Address, Env, String, Symbol, Vec};
 
 const DAY_IN_LEDGERS: u32 = 17_280;
 const INSTANCE_BUMP: u32 = 30 * DAY_IN_LEDGERS;
@@ -112,6 +112,7 @@ mod contract {
             name: String,
             description: String,
             keeper_bps: u32,
+            category: Symbol,
         ) -> Result<u64, Error> {
             merchant.require_auth();
 
@@ -147,6 +148,7 @@ mod contract {
                 period,
                 active: true,
                 keeper_bps,
+                category: category.clone(),
                 successor_id: 0,
             };
 
@@ -195,6 +197,7 @@ mod contract {
                 name,
                 description,
                 keeper_bps,
+                category,
             }
             .publish(&env);
 

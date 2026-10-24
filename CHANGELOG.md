@@ -9,6 +9,11 @@ change the contract interface.
 
 ### Added
 
+- `plan-registry:create_plan` takes a `category: Symbol`; `Plan` and
+  `PlanCreated` expose it for discovery. Follow-up issues are needed in
+  `payflow-backend`, `payflow-frontend` and `payflow-docs` to consume the new
+  field and support category filtering.
+
 - `subscription:due_mandates(merchant, start, limit)` returns due mandate ids
   from one bounded page of the merchant index.
 `due_mandates`, `ProfileUpdated`, `create_plan`'s `keeper_bps`, `charge`'s

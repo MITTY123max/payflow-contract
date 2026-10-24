@@ -1,4 +1,5 @@
 extern crate std;
+use soroban_sdk::Symbol;
 use soroban_sdk::{
     xdr::{Limits, WriteXdr},
     Address, Env, Event, String,
@@ -64,6 +65,7 @@ fn plan_created_layout() {
             name: String::from_str(&env, "sample-plan"),
             description: String::from_str(&env, "sample description"),
             keeper_bps: 125,
+            category: Symbol::new(&env, "fitness"),
         },
     );
 }

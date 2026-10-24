@@ -11,7 +11,7 @@
 //! This crate holds data types only. It has no contract, no entry points, and
 //! no storage keys of its own.
 
-use soroban_sdk::{contracttype, Address, String};
+use soroban_sdk::{contracttype, Address, String, Symbol};
 
 /// Largest keeper tip a plan may set, in basis points of the merchant's share:
 /// 5%. The tip is paid out of the merchant's share and never out of the
@@ -56,6 +56,11 @@ mod plan {
         pub period: u64,
         /// Whether the plan accepts new subscriptions. Inactive plans cannot be subscribed to.
         pub active: bool,
+        /// Merchant-selected discovery category, so subscribers can browse
+        /// plans by what they are for. Soroban symbols are short and limited to
+        /// the symbol alphabet, which is what makes them cheap to index; this
+        /// may be empty, and it is frozen with the rest of the plan's terms.
+        pub category: Symbol,
         /// Share of each charge paid to whichever account settles it, in basis
         /// points of the merchant's share. 0 means the merchant keeps it all.
         /// At most `MAX_KEEPER_BPS`; the registry rejects anything higher.

@@ -12,7 +12,7 @@ use soroban_sdk::{
     testutils::{Address as _, Events as _, Ledger as _, MockAuth, MockAuthInvoke},
     token::{StellarAssetClient, TokenClient},
     xdr::{ContractEventBody, ScMap, ScSymbol, ScVal},
-    Address, Env, FromVal, IntoVal, String,
+    Address, Env, FromVal, IntoVal, String, Symbol,
 };
 
 const MONTH: u64 = 2_592_000;
@@ -108,6 +108,7 @@ impl World<'_> {
             &String::from_str(&self.env, "Demo Plan"),
             &String::from_str(&self.env, ""),
             &keeper_bps,
+            &Symbol::new(&self.env, ""),
         )
     }
 
@@ -121,6 +122,7 @@ impl World<'_> {
             &String::from_str(&self.env, "Custom Plan"),
             &String::from_str(&self.env, ""),
             &0,
+            &Symbol::new(&self.env, ""),
         )
     }
 
@@ -806,6 +808,7 @@ fn zero_fee_pays_merchant_in_full() {
         &String::from_str(&env, "Demo Plan"),
         &String::from_str(&env, ""),
         &0,
+        &Symbol::new(&env, ""),
     );
     let user = Address::generate(&env);
     StellarAssetClient::new(&env, &token).mint(&user, &100_000);
@@ -1364,6 +1367,7 @@ fn fee_paid_to_address() {
         &String::from_str(&env, "Demo Plan"),
         &String::from_str(&env, ""),
         &0,
+        &Symbol::new(&env, ""),
     );
     let user = Address::generate(&env);
     StellarAssetClient::new(&env, &token).mint(&user, &100_000);
@@ -1731,6 +1735,7 @@ fn committed_per_period_only_counts_this_subscriber_and_token() {
         &String::from_str(&w.env, "Other Token Plan"),
         &String::from_str(&w.env, ""),
         &0,
+        &Symbol::new(&w.env, ""),
     );
 
     let user = w.subscriber(1_000_000);
@@ -1989,6 +1994,7 @@ fn fee_to_contract_address_receives_the_fee() {
         &String::from_str(&env, "Demo Plan"),
         &String::from_str(&env, ""),
         &0,
+        &Symbol::new(&env, ""),
     );
     let user = Address::generate(&env);
     minter.mint(&user, &100_000);
@@ -2124,6 +2130,7 @@ impl FailingTokenWorld<'_> {
             &String::from_str(&self.env, "Demo Plan"),
             &String::from_str(&self.env, ""),
             &keeper_bps,
+            &Symbol::new(&self.env, ""),
         )
     }
 
@@ -2380,6 +2387,7 @@ fn upgrade_rejects_a_plan_in_another_token() {
         &String::from_str(&w.env, "Other Token Plan"),
         &String::from_str(&w.env, ""),
         &0,
+        &Symbol::new(&w.env, ""),
     );
 
     assert_eq!(
@@ -2405,6 +2413,7 @@ fn upgrade_rejects_a_plan_from_another_merchant() {
         &String::from_str(&w.env, "Other Merchant Plan"),
         &String::from_str(&w.env, ""),
         &0,
+        &Symbol::new(&w.env, ""),
     );
 
     assert_eq!(
