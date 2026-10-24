@@ -34,6 +34,22 @@ pub struct Subscribed {
     pub keeper_bps: u32,
 }
 
+/// Emitted when a batch of mandates is opened in a single call by
+/// `subscribe_many`. One event is emitted per batch, after every mandate in
+/// the batch has been created, so indexers can correlate the individual
+/// `Subscribed` events with the batch that produced them.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SubscribedMany {
+    /// Account of the subscriber who authorized the batch.
+    #[topic]
+    pub subscriber: Address,
+    /// IDs of the mandates created, in the same order as the requested plans.
+    pub mandate_ids: soroban_sdk::Vec<u64>,
+    /// IDs of the plans subscribed to, in request order.
+    pub plan_ids: soroban_sdk::Vec<u64>,
+}
+
 /// Emitted when a mandate charge is successfully executed.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]

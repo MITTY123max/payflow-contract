@@ -64,4 +64,8 @@ pub enum Error {
     /// The pause has exceeded its maximum length and must be expired with
     /// `expire_pause`, not resumed or extended.
     PauseExpired = 24,
+    /// A batch subscription was given more plans than `MAX_BATCH_PLANS`.
+    BatchTooLarge = 25,
+    /// A batch subscription was given no plans.
+    EmptyBatch = 26,
 }
