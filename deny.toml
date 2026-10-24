@@ -5,6 +5,11 @@ ignore = [
     # build only through soroban-sdk's own dependencies, so it goes away when
     # the SDK drops it, not through anything this workspace can change.
     { id = "RUSTSEC-2024-0436", reason = "unmaintained, no vulnerability; pulled in by soroban-sdk" },
+    # crypto-bigint's constant-time operations reach the build only through
+    # soroban-env-host, which the SDK and the test harness pull in. These
+    # contracts perform no secret-dependent arithmetic of their own, and the
+    # version is the SDK's to move, not this workspace's.
+    { id = "RUSTSEC-2026-0387", reason = "timing variability in a transitive dep of soroban-sdk; no secret-dependent code here" },
 ]
 
 [bans]
