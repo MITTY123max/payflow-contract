@@ -2695,3 +2695,75 @@ fn update_admin_requires_the_current_admins_auth() {
     assert!(w.sub.try_update_admin(&next).is_err());
     assert_eq!(w.sub.admin(), before);
 }
+
+#[test]
+fn cancel_page_skips_finished_mandates_and_cancels_active_and_paused() {
+    let w = world();
+    let plan_id = w.plan();
+    let user = w.subscriber(100_000);
+    let active = w.sub.subscribe(&user, &plan_id, &0, &0);
+    let paused = w.sub.subscribe(&user, &plan_id, &0, &0);
+    let completed = w.sub.subscribe(&user, &plan_id, &1, &0);
+    let cancelled = w.sub.subscribe(&user, &plan_id, &0, &0);
+
+    w.sub.set_paused(&user, &paused, &true);
+    w.sub.charge(&w.keeper, &completed);
+    w.sub.cancel(&user, &cancelled);
+    assert_eq!(
+        w.sub.get_mandate(&completed).status,
+        MandateStatus::Completed
+    );
+
+    // Only the active and the paused mandate are left to cancel.
+    assert_eq!(w.sub.cancel_page(&user, &0, &u32::MAX), 2);
+    assert_eq!(w.sub.get_mandate(&active).status, MandateStatus::Cancelled);
+    assert_eq!(w.sub.get_mandate(&paused).status, MandateStatus::Cancelled);
+    assert_eq!(
+        w.sub.get_mandate(&completed).status,
+        MandateStatus::Completed
+    );
+
+    // A second pass finds nothing to do.
+    assert_eq!(w.sub.cancel_page(&user, &0, &u32::MAX), 0);
+}
+
+#[test]
+fn cancel_page_respects_the_page_cap_and_offset() {
+    let w = world();
+    let plan_id = w.plan();
+    let user = w.subscriber(100_000);
+    for _ in 0..(MAX_PAGE + 2) {
+        w.sub.subscribe(&user, &plan_id, &0, &0);
+    }
+
+    assert_eq!(w.sub.cancel_page(&user, &0, &u32::MAX), MAX_PAGE);
+    assert_eq!(w.sub.cancel_page(&user, &MAX_PAGE, &u32::MAX), 2);
+    for mandate_id in w.sub.subscriber_mandates(&user, &0, &u32::MAX) {
+        assert_eq!(
+            w.sub.get_mandate(&mandate_id).status,
+            MandateStatus::Cancelled
+        );
+    }
+}
+
+#[test]
+fn cancel_page_requires_the_subscriber_to_authorize() {
+    let w = world();
+    let plan_id = w.plan();
+    let user = w.subscriber(100_000);
+    w.sub.subscribe(&user, &plan_id, &0, &0);
+    let other_signer = Address::generate(&w.env);
+
+    w.env.mock_auths(&[MockAuth {
+        address: &other_signer,
+        invoke: &MockAuthInvoke {
+            contract: &w.sub.address,
+            fn_name: "cancel_page",
+            args: (&user, &0u32, &1u32).into_val(&w.env),
+            sub_invokes: &[],
+        },
+    }]);
+
+    assert!(w.sub.try_cancel_page(&user, &0, &1).is_err());
+    assert_eq!(w.sub.subscriber_mandates(&user, &0, &1).len(), 1);
+}

@@ -9,6 +9,11 @@ change the contract interface.
 
 ### Added
 
+- `subscription:cancel_page(subscriber, start, limit)` lets a subscriber cancel
+  up to 50 mandates at once, skipping mandates already cancelled or completed.
+  `payflow-backend`, `payflow-frontend` and `payflow-docs` need follow-up issues
+  to expose and document the new operation.
+
 - `subscription:subscribe` accepts `max_total` (0 = uncapped). Mandates track
   settled spend and complete without a debit when the next full charge would
   exceed the cap; the existing `max_charges` limit continues to apply, and

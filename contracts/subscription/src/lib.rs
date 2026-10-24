@@ -1007,6 +1007,58 @@ mod contract {
             })
         }
 
+        /// Permanently cancel every cancellable mandate in one page of the
+        /// subscriber's index. The scan is capped at `MAX_PAGE`; reading index
+        /// slots directly avoids touching the separate count entry, keeping a
+        /// full page within the 100-entry transaction limit.
+        ///
+        /// Mandates already cancelled or completed are skipped, so calling it
+        /// twice is harmless. Returns how many this call cancelled.
+        ///
+        /// # Auth
+        /// Requires authorization from `subscriber`.
+        ///
+        /// # Events
+        /// Emits one [`Cancelled`] per mandate it cancels.
+        pub fn cancel_page(
+            env: Env,
+            subscriber: Address,
+            start: u32,
+            limit: u32,
+        ) -> Result<u32, Error> {
+            subscriber.require_auth();
+
+            let end = start.saturating_add(limit.min(MAX_PAGE));
+            let mut cancelled = 0;
+            for position in start..end {
+                let slot = DataKey::SubscriberMandate(subscriber.clone(), position);
+                let Some(mandate_id) = env.storage().persistent().get::<_, u64>(&slot) else {
+                    continue;
+                };
+                let mut mandate = Self::read_mandate(&env, mandate_id)?;
+                if mandate.subscriber != subscriber {
+                    return Err(Error::NotSubscriber);
+                }
+                if mandate.status == MandateStatus::Cancelled
+                    || mandate.status == MandateStatus::Completed
+                {
+                    continue;
+                }
+
+                mandate.status = MandateStatus::Cancelled;
+                Self::write_mandate(&env, &mandate);
+                Cancelled {
+                    mandate_id,
+                    subscriber: subscriber.clone(),
+                    charges_made: mandate.charges_made,
+                }
+                .publish(&env);
+                cancelled += 1;
+            }
+
+            Ok(cancelled)
+        }
+
         /// Total committed spend of `subscriber` in `token` per `period_secs`,
         /// normalising mandates with different billing periods to the period the
         /// caller asks about. Monthly and weekly mandates therefore add up to one
