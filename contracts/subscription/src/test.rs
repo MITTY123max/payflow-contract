@@ -2767,3 +2767,66 @@ fn cancel_page_requires_the_subscriber_to_authorize() {
     assert!(w.sub.try_cancel_page(&user, &0, &1).is_err());
     assert_eq!(w.sub.subscriber_mandates(&user, &0, &1).len(), 1);
 }
+
+#[test]
+fn due_mandates_filters_a_full_page() {
+    let w = world();
+    let plan_id = w.plan();
+    let user = w.subscriber(1_000_000);
+    let mut ids = soroban_sdk::Vec::<u64>::new(&w.env);
+
+    for index in 0..(MAX_PAGE + 5) {
+        let max_charges = if index == 1 { 1 } else { 0 };
+        ids.push_back(w.sub.subscribe(&user, &plan_id, &max_charges, &0));
+    }
+
+    let paused_id = ids.get_unchecked(0);
+    let completed_id = ids.get_unchecked(1);
+    let early_id = ids.get_unchecked(2);
+    w.sub.set_paused(&user, &paused_id, &true);
+    w.sub.charge(&w.keeper, &completed_id);
+    w.sub.charge(&w.keeper, &early_id);
+
+    let due = w.sub.due_mandates(&w.merchant, &0, &u32::MAX);
+    assert_eq!(due.len(), MAX_PAGE - 3);
+    assert!(!due.contains(paused_id));
+    assert!(!due.contains(completed_id));
+    assert!(!due.contains(early_id));
+    assert_eq!(due.get(0), Some(ids.get_unchecked(3)));
+    assert_eq!(
+        w.sub.due_mandates(&w.merchant, &3, &2),
+        soroban_sdk::vec![&w.env, ids.get_unchecked(3), ids.get_unchecked(4)]
+    );
+    assert_eq!(
+        w.sub.due_mandates(&w.merchant, &MAX_PAGE, &MAX_PAGE),
+        soroban_sdk::vec![
+            &w.env,
+            ids.get_unchecked(MAX_PAGE),
+            ids.get_unchecked(MAX_PAGE + 1),
+            ids.get_unchecked(MAX_PAGE + 2),
+            ids.get_unchecked(MAX_PAGE + 3),
+            ids.get_unchecked(MAX_PAGE + 4),
+        ]
+    );
+}
+
+#[test]
+fn due_mandates_agrees_with_is_due_and_needs_no_auth() {
+    let w = world();
+    let plan_id = w.plan();
+    let user = w.subscriber(100_000);
+    let id = w.sub.subscribe(&user, &plan_id, &0, &0);
+
+    // A read needs no signature at all.
+    w.env.set_auths(&[]);
+    assert!(w.sub.is_due(&id));
+    assert_eq!(
+        w.sub.due_mandates(&w.merchant, &0, &u32::MAX),
+        soroban_sdk::vec![&w.env, id]
+    );
+
+    w.env.mock_all_auths();
+    w.sub.cancel(&user, &id);
+    assert!(!w.sub.is_due(&id));
+    assert!(w.sub.due_mandates(&w.merchant, &0, &u32::MAX).is_empty());
+}

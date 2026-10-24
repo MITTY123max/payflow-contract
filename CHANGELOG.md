@@ -9,6 +9,14 @@ change the contract interface.
 
 ### Added
 
+- `subscription:due_mandates(merchant, start, limit)` returns due mandate ids
+  from one bounded page of the merchant index.
+`due_mandates`, `ProfileUpdated`, `create_plan`'s `keeper_bps`, `charge`'s
+`keeper` argument and the new `tip`/`keeper`/`keeper_bps` event fields) ripple
+into `payflow-backend`, `payflow-frontend` and `payflow-docs`. The PR should list
+follow-up issues for consumers of `due_mandates`, the new fields, and keeper
+arguments.
+
 - `subscription:cancel_page(subscriber, start, limit)` lets a subscriber cancel
   up to 50 mandates at once, skipping mandates already cancelled or completed.
   `payflow-backend`, `payflow-frontend` and `payflow-docs` need follow-up issues

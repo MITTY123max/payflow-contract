@@ -964,16 +964,7 @@ mod contract {
         /// check vault balance; a funded-ness check is the caller's job.
         pub fn is_due(env: Env, mandate_id: u64) -> Result<bool, Error> {
             let m = Self::read_mandate(&env, mandate_id)?;
-            if !Self::active_at(&m, env.ledger().timestamp()) {
-                return Ok(false);
-            }
-            if m.max_charges != 0 && m.charges_made >= m.max_charges {
-                return Ok(false);
-            }
-            if m.max_total != 0 && m.total_spent.saturating_add(m.amount) > m.max_total {
-                return Ok(false);
-            }
-            Ok(env.ledger().timestamp() >= m.next_charge)
+            Ok(Self::mandate_is_due(&m, env.ledger().timestamp()))
         }
 
         /// Read-only preview of what `charge` would pay right now.
@@ -1057,6 +1048,36 @@ mod contract {
             }
 
             Ok(cancelled)
+        }
+
+        /// Ids of due mandates opened against `merchant`'s plans, in index
+        /// order. A keeper settling one merchant otherwise has to read every
+        /// mandate the merchant has ever had and test each one itself.
+        ///
+        /// Reads at most one page of index slots and their mandate entries,
+        /// and answers exactly what `is_due` would for each.
+        pub fn due_mandates(env: Env, merchant: Address, start: u32, limit: u32) -> Vec<u64> {
+            let end = start.saturating_add(limit.min(MAX_PAGE));
+            let now = env.ledger().timestamp();
+            let mut due = Vec::new(&env);
+            let storage = env.storage().persistent();
+
+            // Avoid a separate count read: a full page reads at most 50 index
+            // slots and 50 mandates, staying within the 100-entry footprint.
+            for position in start..end {
+                let Some(id) =
+                    storage.get::<_, u64>(&DataKey::MerchantMandate(merchant.clone(), position))
+                else {
+                    continue;
+                };
+                let Some(mandate) = storage.get::<_, Mandate>(&DataKey::Mandate(id)) else {
+                    continue;
+                };
+                if Self::mandate_is_due(&mandate, now) {
+                    due.push_back(id);
+                }
+            }
+            due
         }
 
         /// Total committed spend of `subscriber` in `token` per `period_secs`,
@@ -1218,6 +1239,16 @@ mod contract {
                 .ok_or(Error::AmountOverflow)?
                 / BPS_DENOMINATOR;
             Ok((fee, tip, merchant_gross - tip))
+        }
+
+        /// Whether `charge` would settle this mandate at `now`: active,
+        /// inside both caps and past its next charge date. `is_due` and
+        /// `due_mandates` both answer from this, so they cannot disagree.
+        fn mandate_is_due(m: &Mandate, now: u64) -> bool {
+            Self::active_at(m, now)
+                && (m.max_charges == 0 || m.charges_made < m.max_charges)
+                && (m.max_total == 0 || m.total_spent.saturating_add(m.amount) <= m.max_total)
+                && now >= m.next_charge
         }
 
         fn active_at(m: &Mandate, now: u64) -> bool {
